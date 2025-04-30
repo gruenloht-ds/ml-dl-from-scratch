@@ -1,5 +1,7 @@
 # Toy Datasets
 
+This directory has toy datasets to test out the implemented algorithms. The datasets are not meant to be hard, but to test if the implementation is working correctly.
+
 Datasets were obtained from [The UC Irvine Machine Learning Repository](https://archive.ics.uci.edu/)
 
 ## The classification dataset: [Breast Cancer Wisconsin (Diagnositic)](https://archive.ics.uci.edu/dataset/17/breast+cancer+wisconsin+diagnostic)
