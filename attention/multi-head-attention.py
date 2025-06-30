@@ -17,10 +17,13 @@ class Attention:
         return np.exp(x_shifted) / np.exp(x_shifted).sum(axis=axis, keepdims=True)
 
     def multiply_qkv(self, input_data, x):
+        # input_data:                    [batch_size, seq_len, d_model]
+        # x (the q, k, or v matrix):     [d_model, d_model]
+        
         # Do matrix multiplication
         X = input_data @ x                                             # [batch_size, seq_len, d_model]
 
-        # Split the multiplication into 8 heads (blockwise mat mult)
+        # Split the multiplication into h heads (blockwise mat mult)
         X = X.reshape(X.shape[0], X.shape[1], self.h, -1)              # [batch_size, seq_len, heads, d_k]
 
         # Move the heads next to the batches so we can stack them
@@ -39,13 +42,17 @@ class Attention:
         return X
 
     def dropout(self, mat):
+        # Do nothing if dropout = 0
+        if self.p_dropout == 0:
+            return mat
+        
         masking = np.random.binomial(1, 1-self.p_dropout, mat.shape)/1.0
         masking /= (1-self.p_dropout)
 
         return mat * masking
 
     def forward(self, X, attention_mask=None):
-        # X: (batch_size, seq_len, d_k)
+        # X: [batch_size, seq_len, d_model]
 
         # Linear projections
         Q = self.multiply_qkv(X, self.q) # [batch_size * h, seq_len, d_k]
@@ -58,6 +65,8 @@ class Attention:
 
         # Apply masking
         if attention_mask is not None:
+            # attention_mask: [seq_len, seq_len] - this gets braodcased across all batches and heads
+            
             attention_mask *= -1e9 # masking is assumed to be a matrix of 1's and 0's
             scores += attention_mask
         
@@ -70,11 +79,29 @@ class Attention:
         multi_head_attention = attention_dropout @ V  # [batch_size * h, seq_len, d_k]
 
         # Concatenate heads (reverse previous manipulation)        
-        multi_head_attention = self.concat(multi_head_attention)
+        multi_head_attention = self.concat(multi_head_attention) # [batch_size, seq_len, d_model]
 
-        output = (multi_head_attention @ self.o)
+        output = (multi_head_attention @ self.o)  # [batch_size, seq_len, d_model]
         
         return output
 
     def __call__(self, X, attention_mask=None):
         return self.forward(X, attention_mask)
+
+def main():
+    d_model = 512
+    seq_len = 10
+    batch_size = 5
+    h = 8 # Number of heads
+    p = 0.2 # dropout
+    
+    # Random inputs solely for the forward pass (inputs don't matter since no backward pass - they are just here to exist)
+    x_input = np.random.randn(batch_size, seq_len, d_model)
+
+    attention_block = Attention(d_model, h, p)
+    # Do a forward pass
+    print(attention_block(x_input).shape)
+
+if __name__ == "__main__":
+    main()
+
